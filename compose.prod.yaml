@@ -1,0 +1,54 @@
+# Production stack: API + PostgreSQL.
+#
+#   docker compose -f compose.prod.yaml --env-file .env up -d --build
+#
+# This is separate from the dev `compose.yaml` (which spring-boot-docker-compose
+# auto-manages). Configuration comes from a `.env` file — see `.env.example`.
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Intentionally NOT published to the host — only reachable on the internal
+    # network. Uncomment to expose for debugging.
+    # ports:
+    #   - "5432:5432"
+    networks:
+      - backend
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tickets-api:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    networks:
+      - backend
+
+volumes:
+  db-data:
+
+networks:
+  backend:

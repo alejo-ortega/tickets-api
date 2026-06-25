@@ -1,0 +1,22 @@
+# Build output
+build/
+.gradle/
+bin/
+out/
+
+# IDE / tooling
+.vscode/
+.idea/
+*.iml
+
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# Local env & secrets — never bake these into an image
+.env
+
+# Docs / misc
+HELP.md
+AGENTS.md
